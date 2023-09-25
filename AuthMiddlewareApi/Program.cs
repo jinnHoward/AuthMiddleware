@@ -1,12 +1,20 @@
 
+using AuthMiddleware.Core;
+using AuthMiddlewareApi.Authentication;
 using AuthMiddlewareApi.Extentions;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Tokens;
 using System.Reflection;
+using System.Security.Cryptography.Xml;
+using System.Text;
 
 namespace AuthMiddlewareApi
 {
     public static class Program
     {
+        public const string AccessAudience = "TestAud";
         private static ConfigurationManager _config;
         private static string _environment;
 
@@ -47,10 +55,28 @@ namespace AuthMiddlewareApi
 
         public static void AddServices(this IServiceCollection services)
         {
+            //services.AddAuthentication(options =>
+            //    {
+            //        options.DefaultAuthenticateScheme = ApiKeyAuthenticationOptions.DefaultScheme;
+            //        options.DefaultChallengeScheme = ApiKeyAuthenticationOptions.DefaultScheme;
+            //    })
+            //    .AddApiKeySupport(options => { });
+
+            //services.AddAuthentication(options =>
+            //    {
+            //        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            //        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            //        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            //    })
+            //.AddJwtBearer(jwtOptions =>
+            //{
+            //    jwtOptions.TokenValidationParameters = GetValidationParameters(GetSecurityKey("ProEMLh5e_qnzdNU"), GetSecurityKey("ProEMLh5e_qnzdNU"), AccessAudience);
+            //});
+
             services.AddAuthorization();
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
-        }
+        }               
 
         private static WebApplication ConfigureApp(this WebApplication app)
         {
@@ -61,7 +87,7 @@ namespace AuthMiddlewareApi
             }
 
             app.UseHttpsRedirection();
-
+            app.UseMiddleware<SimpleApiKeyMiddleware>();  //Register as first middleware to avoid other middleware execution before api key check
             app.UseAuthorization();
 
             app.MapWeatherApiController();
