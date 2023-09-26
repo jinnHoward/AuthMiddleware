@@ -31,10 +31,11 @@ namespace AuthMiddlewareApi.Authentication
             //Get apikey header
             else if (!httpContext.Request.Headers.TryGetValue(API_KEY_HEADER, out var apiKey))
             {
-                _logger.LogInformation("ApiKey not found inside request headers. Validating JWT");
+                //_logger.LogInformation("ApiKey not found inside request headers.");
 
                 //Error and exit from asp.net core pipeline
-                await GenerateForbiddenResponse(httpContext, "ApiKey not found inside request headers");
+                await GenerateForbiddenResponse(httpContext, "ApiKey not found inside request headers");    
+                //await _next(httpContext);
             }
             else if (!await ApiKeyCheckAsync(apiKey))
             {

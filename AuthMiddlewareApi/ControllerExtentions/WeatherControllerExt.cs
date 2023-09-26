@@ -1,5 +1,4 @@
-﻿using AuthMiddleware.Core;
-
+﻿
 namespace AuthMiddlewareApi.Extentions
 {
     internal static class WeatherControllerExt
@@ -33,6 +32,7 @@ namespace AuthMiddlewareApi.Extentions
                         .ToArray();
                     return forecast;
                 })
+                .AllowAnonymous()
                 .WithName($"GetWeatherForecast-{endpointName}")
                 .WithOpenApi();
         }
@@ -51,7 +51,7 @@ namespace AuthMiddlewareApi.Extentions
                         .ToArray();
                     return forecast;
                 })
-                //.RequireAuthorization(ApiKeyAuthenticationOptions.DefaultScheme)
+                .RequireAuthorization("Api_Or_Jwt")
                 .WithName($"GetWeatherForecast-{endpointName}")
                 .WithOpenApi();
         }

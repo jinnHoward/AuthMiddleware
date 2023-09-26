@@ -1,5 +1,4 @@
 
-using AuthMiddleware.Core;
 using AuthMiddlewareApi.Authentication;
 using AuthMiddlewareApi.Extentions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -43,7 +42,9 @@ namespace AuthMiddlewareApi
 
         public static WebApplicationBuilder ComposeDependencies(this WebApplicationBuilder builder)
         {
-            // services.AddTransient<IAuthorizationService>(x => { });
+            //builder.Services.AddSingleton<IAuthorizationPolicyProvider, MinimumAgePolicyProvider>();
+            builder.Services.AddSingleton<IAuthorizationHandler, TemporaryStickerHandler>();
+            builder.Services.AddSingleton<IAuthorizationHandler, BadgeEntryHandler>();
             return builder;
         }
 
@@ -55,12 +56,13 @@ namespace AuthMiddlewareApi
 
         public static void AddServices(this IServiceCollection services)
         {
-            //services.AddAuthentication(options =>
-            //    {
-            //        options.DefaultAuthenticateScheme = ApiKeyAuthenticationOptions.DefaultScheme;
-            //        options.DefaultChallengeScheme = ApiKeyAuthenticationOptions.DefaultScheme;
-            //    })
-            //    .AddApiKeySupport(options => { });
+            //services.AddAuthentication();
+            services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = ApiKeyAuthenticationOptions.DefaultScheme;
+                    options.DefaultChallengeScheme = ApiKeyAuthenticationOptions.DefaultScheme;
+                })
+                .AddApiKeySupport(options => { });
 
             //services.AddAuthentication(options =>
             //    {
@@ -68,12 +70,17 @@ namespace AuthMiddlewareApi
             //        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             //        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
             //    })
-            //.AddJwtBearer(jwtOptions =>
-            //{
-            //    jwtOptions.TokenValidationParameters = GetValidationParameters(GetSecurityKey("ProEMLh5e_qnzdNU"), GetSecurityKey("ProEMLh5e_qnzdNU"), AccessAudience);
-            //});
+            //    .AddJwtBearer(jwtOptions =>
+            //    {
+            //        jwtOptions.TokenValidationParameters = JwtExtensions.GetValidationParameters("ProEMLh5e_qnzdNU", "ProEMLh5e_qnzdNU");
+            //    });
 
-            services.AddAuthorization();
+            //services.AddAuthorization();
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("Api_Or_Jwt", policy => policy.AddRequirements(new BuildingEntryRequirement()));
+            });
+
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
         }               
@@ -87,7 +94,7 @@ namespace AuthMiddlewareApi
             }
 
             app.UseHttpsRedirection();
-            app.UseMiddleware<SimpleApiKeyMiddleware>();  //Register as first middleware to avoid other middleware execution before api key check
+            //app.UseMiddleware<SimpleApiKeyMiddleware>();  //Register as first middleware to avoid other middleware execution before api key check
             app.UseAuthorization();
 
             app.MapWeatherApiController();
