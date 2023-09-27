@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System.Net.Mime;
@@ -10,6 +11,7 @@ namespace AuthMiddlewareApi.Authentication
 {
     public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>
     {
+        private static readonly string API_KEY_HEADER = "X-Api-Key";
         private enum AuthenticationFailureReason
         {
             NONE = 0,
@@ -47,6 +49,42 @@ namespace AuthMiddlewareApi.Authentication
 
                 return AuthenticateResult.Success(ticket);
             }
+
+            if (Request.Headers.TryGetValue("Authorization", out var authToken))
+            {
+                if ((await JwtExtensions.ValidateToken(authToken!, null)).IsValid)
+                {
+                    var identity = GetClaimsIdentity("UI/USER");                    
+
+                    var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
+                    principal.AddIdentity(identity);
+                    var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationOptions.Scheme);
+
+                    return AuthenticateResult.Success(ticket);
+                }
+            }
+            //Get apikey header
+            if (Request.Headers.TryGetValue(API_KEY_HEADER, out var apiKey))
+            {
+                if (!await ApiKeyCheckAsync(apiKey))
+                {
+                    _logger.LogError("ApiKey is not valid: {ApiKey}", apiKey);
+                }
+                else
+                {
+                    _logger.LogInformation("ApiKey validated: {ApiKey}", apiKey);
+
+
+                    var identity = GetClaimsIdentity("SDK/APP");
+
+                    var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
+                    principal.AddIdentity(identity);
+                    var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationOptions.Scheme);
+                    return AuthenticateResult.Success(ticket);
+                }
+            }
+
+
 
             _failureReason = AuthenticationFailureReason.API_KEY_INVALID;
             return AuthenticateResult.NoResult();
@@ -94,6 +132,37 @@ namespace AuthMiddlewareApi.Authentication
             await Response.BodyWriter.WriteAsync(responseStream.ToArray());
         }
 
+        private static ClaimsIdentity GetClaimsIdentity(string requester)
+        {
+            var id = new ClaimsIdentity();
+            id.AddClaim(new Claim("UserId", "12345"));
+            id.AddClaim(new Claim("CompanyId", "6789"));
+            id.AddClaim(new Claim("DepartmentId", "10"));
+            id.AddClaim(new Claim("Requester", requester, null, "https://microsoftsecurity"));
+            return id;
+        }
+
+        private Task<bool> ApiKeyCheckAsync(string apiKey)
+        {
+            //TODO: setup your validation code...
+            return Task.FromResult<bool>(apiKey == "EECBA5A9-5541-4D58-A2A2-C6A46AC3D03C");
+        }
+
+        private async Task GenerateForbiddenResponse(HttpContext context, string message)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            context.Response.ContentType = MediaTypeNames.Application.Json;
+
+            using var responseStream = new MemoryStream();
+            await System.Text.Json.JsonSerializer.SerializeAsync(responseStream, new
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Message = message
+            });
+
+            await context.Response.BodyWriter.WriteAsync(responseStream.ToArray());
+        }
+
         #region Privates
         private bool TryGetApiKeyHeader(out string apiKeyHeaderValue, out AuthenticateResult result)
         {
@@ -121,14 +190,7 @@ namespace AuthMiddlewareApi.Authentication
 
             result = null;
             return true;
-        }
-
-        private Task<bool> ApiKeyCheckAsync(string apiKey)
-        {
-            //TODO: setup your validation code...
-
-            return Task.FromResult<bool>(true);
-        }
+        }       
         #endregion
     }
 

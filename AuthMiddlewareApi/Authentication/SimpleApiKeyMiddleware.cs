@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.DataProtection;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using System.Net.Mime;
+using System.Security.Claims;
 using System.Security.Cryptography.Xml;
 
 namespace AuthMiddlewareApi.Authentication
@@ -19,11 +21,21 @@ namespace AuthMiddlewareApi.Authentication
 
         public async Task Invoke(HttpContext httpContext)
         {
+            if (IsHttpContextValid(httpContext) == false || IsAllowAnonymousEndpoint(httpContext))
+            {
+                await _next(httpContext);
+                return;
+            }
+
             if (httpContext.Request.Headers.TryGetValue("Authorization", out var authToken))
             {
-                var validationToken = JwtExtensions.GetValidationParameters("ProEMLh5e_qnzdNU", "ProEMLh5e_qnzdNU");
-                if((await JwtExtensions.ValidateToken(authToken, validationToken)).IsValid)
+                if ((await JwtExtensions.ValidateToken(authToken!, null)).IsValid)
+                {
+                    var identity = GetClaimsIdentity("UI/USER");
+                    httpContext.User.AddIdentity(identity);
+
                     await _next(httpContext);
+                }
                 else
                     await GenerateForbiddenResponse(httpContext, "JWT not valid.");
 
@@ -31,11 +43,7 @@ namespace AuthMiddlewareApi.Authentication
             //Get apikey header
             else if (!httpContext.Request.Headers.TryGetValue(API_KEY_HEADER, out var apiKey))
             {
-                //_logger.LogInformation("ApiKey not found inside request headers.");
-
-                //Error and exit from asp.net core pipeline
-                await GenerateForbiddenResponse(httpContext, "ApiKey not found inside request headers");    
-                //await _next(httpContext);
+                await GenerateForbiddenResponse(httpContext, "ApiKey not found inside request headers");
             }
             else if (!await ApiKeyCheckAsync(apiKey))
             {
@@ -48,15 +56,44 @@ namespace AuthMiddlewareApi.Authentication
             {
                 _logger.LogInformation("ApiKey validated: {ApiKey}", apiKey);
 
+
+                var id = GetClaimsIdentity("SDK/APP");
+                httpContext.User.AddIdentity(id);
                 //Proceed with pipeline
                 await _next(httpContext);
             }
         }
 
+        private static bool IsHttpContextValid(HttpContext httpContext)
+        {
+            if (httpContext.GetEndpoint()?.DisplayName == "405 HTTP Method Not Supported")
+                return false;
+
+            return true;
+        }
+
+        private bool IsAllowAnonymousEndpoint(HttpContext httpContext)
+        {
+            var endpoint = httpContext.GetEndpoint();
+            if (endpoint == null)
+                _logger.LogInformation("endpoint is null");
+
+            return endpoint?.Metadata?.GetMetadata<IAllowAnonymous>() != null;
+        }
+
+        private static ClaimsIdentity GetClaimsIdentity(string requester)
+        {
+            var id = new ClaimsIdentity();
+            id.AddClaim(new Claim("UserId", "12345"));
+            id.AddClaim(new Claim("CompanyId", "6789"));
+            id.AddClaim(new Claim("DepartmentId", "10"));
+            id.AddClaim(new Claim("Requester", requester, null, "https://microsoftsecurity"));
+            return id;
+        }
+
         private Task<bool> ApiKeyCheckAsync(string apiKey)
         {
             //TODO: setup your validation code...
-
             return Task.FromResult<bool>(apiKey == "EECBA5A9-5541-4D58-A2A2-C6A46AC3D03C");
         }
 
@@ -69,6 +106,21 @@ namespace AuthMiddlewareApi.Authentication
             await System.Text.Json.JsonSerializer.SerializeAsync(responseStream, new
             {
                 Status = StatusCodes.Status403Forbidden,
+                Message = message
+            });
+
+            await context.Response.BodyWriter.WriteAsync(responseStream.ToArray());
+        }
+
+        private async Task SetResponseBody(HttpContext context, int httpStatusCode,  string message)
+        {
+            context.Response.StatusCode = httpStatusCode;
+            context.Response.ContentType = MediaTypeNames.Application.Json;
+
+            using var responseStream = new MemoryStream();
+            await System.Text.Json.JsonSerializer.SerializeAsync(responseStream, new
+            {
+                Status = httpStatusCode,
                 Message = message
             });
 

@@ -1,5 +1,4 @@
-﻿
-namespace AuthMiddlewareApi.Extentions
+﻿namespace AuthMiddlewareApi.ControllerExtentions
 {
     internal static class WeatherControllerExt
     {
@@ -10,54 +9,69 @@ namespace AuthMiddlewareApi.Extentions
 
         internal static void MapWeatherApiController(this WebApplication app)
         {
-            var weatherController = app.MapGroup("/weatherforecast");
+            var weatherController = app.MapGroup("/api/weatherforecast");
 
-            weatherController.MapEnpointNoAuth("none");
-            weatherController.MapEnpointApiAuth("api-key_only");
-            weatherController.MapEnpointJwtAuth("jwt_only");
-            weatherController.MapEnpointApiOrJwtAuth("api-key_or_jwt");
+            weatherController.MapEndpointNoAuth("none");
+            weatherController.MapEndpointApiAuth("api-key");
+            weatherController.MapEndpointJwtAuth("jwt");
+            weatherController.MapEnpointApiOrJwtAuth("api-key-or-jwt");
+            weatherController.MapEnpointApiAndJwtAuth("api-key-and-jwt");
         }
 
-        private static void MapEnpointNoAuth(this RouteGroupBuilder grp, string endpointName)
+        private static void MapEndpointNoAuth(this RouteGroupBuilder grp, string endpointName)
         {
-            grp.MapGet($"/{endpointName.ToLower()}", (HttpContext httpContext) =>
-                {
-                    var forecast = Enumerable.Range(1, 5).Select(index =>
-                        new WeatherForecast
-                        {
-                            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                            TemperatureC = Random.Shared.Next(-20, 55),
-                            Summary = summaries[Random.Shared.Next(summaries.Length)]
-                        })
-                        .ToArray();
-                    return forecast;
-                })
+            grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
                 .AllowAnonymous()
                 .WithName($"GetWeatherForecast-{endpointName}")
                 .WithOpenApi();
         }
 
-        private static void MapEnpointApiAuth(this RouteGroupBuilder grp, string endpointName) 
+        private static void MapEndpointApiAuth(this RouteGroupBuilder grp, string endpointName)
         {
-            grp.MapGet($"/{endpointName.ToLower()}", (HttpContext httpContext) =>
-                {
-                    var forecast = Enumerable.Range(1, 5).Select(index =>
-                        new WeatherForecast
-                        {
-                            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                            TemperatureC = Random.Shared.Next(-20, 55),
-                            Summary = summaries[Random.Shared.Next(summaries.Length)]
-                        })
-                        .ToArray();
-                    return forecast;
-                })
-                .RequireAuthorization("Api_Or_Jwt")
+            grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
+                .RequireAuthorization("API_ONLY")
                 .WithName($"GetWeatherForecast-{endpointName}")
                 .WithOpenApi();
         }
 
-        private static void MapEnpointJwtAuth(this RouteGroupBuilder grp, string endpointName) { }
+        private static void MapEndpointJwtAuth(this RouteGroupBuilder grp, string endpointName)
+        {
+            grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
+                .RequireAuthorization("JWT_ONLY")
+                .WithName($"GetWeatherForecast-{endpointName}")
+                .WithOpenApi();
+        }
 
-        private static void MapEnpointApiOrJwtAuth(this RouteGroupBuilder grp, string endpointName) { }
+        private static void MapEnpointApiOrJwtAuth(this RouteGroupBuilder grp, string endpointName)
+        {
+            grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
+                .RequireAuthorization("API_OR_JWT")
+                .WithName($"GetWeatherForecast-{endpointName}")
+                .WithOpenApi();
+        }
+
+        private static void MapEnpointApiAndJwtAuth(this RouteGroupBuilder grp, string endpointName)
+        {
+            grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
+                .RequireAuthorization("API_AND_JWT")
+                .WithName($"GetWeatherForecast-{endpointName}")
+                .WithOpenApi();
+        }
+
+        private static Func<HttpContext, WeatherForecast[]> GetForecast()
+        {
+            return (httpContext) =>
+            {
+                var forecast = Enumerable.Range(1, 5).Select(index =>
+                    new WeatherForecast
+                    {
+                        Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                        TemperatureC = Random.Shared.Next(-20, 55),
+                        Summary = summaries[Random.Shared.Next(summaries.Length)]
+                    })
+                    .ToArray();
+                return forecast;
+            };
+        }
     }
 }

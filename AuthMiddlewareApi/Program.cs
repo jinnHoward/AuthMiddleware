@@ -1,10 +1,12 @@
 
 using AuthMiddlewareApi.Authentication;
-using AuthMiddlewareApi.Extentions;
+using AuthMiddlewareApi.ControllerExtentions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Net.Http.Headers;
+using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
 using System.Security.Cryptography.Xml;
 using System.Text;
@@ -14,6 +16,8 @@ namespace AuthMiddlewareApi
     public static class Program
     {
         public const string AccessAudience = "TestAud";
+        private const string API_OR_JWT = "API_OR_JWT";
+
         private static ConfigurationManager _config;
         private static string _environment;
 
@@ -43,8 +47,8 @@ namespace AuthMiddlewareApi
         public static WebApplicationBuilder ComposeDependencies(this WebApplicationBuilder builder)
         {
             //builder.Services.AddSingleton<IAuthorizationPolicyProvider, MinimumAgePolicyProvider>();
-            builder.Services.AddSingleton<IAuthorizationHandler, TemporaryStickerHandler>();
-            builder.Services.AddSingleton<IAuthorizationHandler, BadgeEntryHandler>();
+            builder.Services.AddSingleton<IAuthorizationHandler, OrApiKeyRequirementHandler>();
+            builder.Services.AddSingleton<IAuthorizationHandler, OrJwtRequirementHandler>();
             return builder;
         }
 
@@ -59,10 +63,27 @@ namespace AuthMiddlewareApi
             //services.AddAuthentication();
             services.AddAuthentication(options =>
                 {
-                    options.DefaultAuthenticateScheme = ApiKeyAuthenticationOptions.DefaultScheme;
-                    options.DefaultChallengeScheme = ApiKeyAuthenticationOptions.DefaultScheme;
+                    options.DefaultAuthenticateScheme = API_OR_JWT;
+                    options.DefaultChallengeScheme = API_OR_JWT;
                 })
-                .AddApiKeySupport(options => { });
+                .AddApiKeySupport(options => { })
+                .AddJwtBearer(jwtOptions =>
+                {
+                    jwtOptions.TokenValidationParameters = JwtExtensions.GetValidationParameters("ProEMLh5e_qnzdNU", "ProEMLh5e_qnzdNU");
+                })
+                .AddPolicyScheme(API_OR_JWT, API_OR_JWT, options =>
+                {
+                    options.ForwardDefaultSelector = context =>
+                    {
+                        string authorization = context.Request.Headers[HeaderNames.Authorization];
+                        if (!string.IsNullOrEmpty(authorization) && authorization.StartsWith("Bearer "))
+                        {
+                            return JwtBearerDefaults.AuthenticationScheme;
+                        }
+                        return ApiKeyAuthenticationOptions.DefaultScheme;
+                    };
+                });
+
 
             //services.AddAuthentication(options =>
             //    {
@@ -78,7 +99,10 @@ namespace AuthMiddlewareApi
             //services.AddAuthorization();
             services.AddAuthorization(options =>
             {
-                options.AddPolicy("Api_Or_Jwt", policy => policy.AddRequirements(new BuildingEntryRequirement()));
+                options.AddPolicy("API_OR_JWT", (policy) => policy.AddRequirements(new ApiKeyOrJwtAccessRequirement()));
+                options.AddPolicy("API_AND_JWT", policy => policy.AddRequirements(new ApiKeyAccessRequirement(), new JwtAccessRequirement()));
+                options.AddPolicy("JWT_ONLY", policy => policy.AddRequirements(new JwtAccessRequirement()));
+                options.AddPolicy("API_ONLY", policy => policy.AddRequirements(new ApiKeyAccessRequirement()));
             });
 
             services.AddEndpointsApiExplorer();
@@ -94,9 +118,10 @@ namespace AuthMiddlewareApi
             }
 
             app.UseHttpsRedirection();
-            //app.UseMiddleware<SimpleApiKeyMiddleware>();  //Register as first middleware to avoid other middleware execution before api key check
+            app.UseMiddleware<SimpleApiKeyMiddleware>();  //Register as first middleware to avoid other middleware execution before api key check
             app.UseAuthorization();
 
+            app.MapAuthApiController();
             app.MapWeatherApiController();
 
             return app;
