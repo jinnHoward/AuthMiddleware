@@ -6,14 +6,14 @@ using System.Security.Cryptography.Xml;
 
 namespace AuthMiddlewareApi.Authentication
 {
-    public class SimpleApiKeyMiddleware
+    public class ApiKeyOrJwtMiddleware
     {
         private static readonly string API_KEY_HEADER = "X-Api-Key";
 
         private readonly RequestDelegate _next;
-        private readonly ILogger<SimpleApiKeyMiddleware> _logger;
+        private readonly ILogger<ApiKeyOrJwtMiddleware> _logger;
 
-        public SimpleApiKeyMiddleware(RequestDelegate next, ILogger<SimpleApiKeyMiddleware> logger)
+        public ApiKeyOrJwtMiddleware(RequestDelegate next, ILogger<ApiKeyOrJwtMiddleware> logger)
         {
             _next = next;
             _logger = logger;
@@ -26,12 +26,15 @@ namespace AuthMiddlewareApi.Authentication
                 await _next(httpContext);
                 return;
             }
+            var authToken = GetHeaderVauleOrEmpty(httpContext, "Authorization");
+            var apiKey = GetHeaderVauleOrEmpty(httpContext, API_KEY_HEADER);
+            var requester = GetRequester(authToken, apiKey);
 
-            if (httpContext.Request.Headers.TryGetValue("Authorization", out var authToken))
+            if (IsNullOrWhiteSpace(authToken) == false)
             {
                 if ((await JwtExtensions.ValidateToken(authToken!, null)).IsValid)
                 {
-                    var identity = GetClaimsIdentity("UI/USER");
+                    var identity = GetClaimsIdentity(requester);
                     httpContext.User.AddIdentity(identity);
 
                     await _next(httpContext);
@@ -41,7 +44,7 @@ namespace AuthMiddlewareApi.Authentication
 
             }
             //Get apikey header
-            else if (!httpContext.Request.Headers.TryGetValue(API_KEY_HEADER, out var apiKey))
+            else if (IsNullOrWhiteSpace(apiKey))
             {
                 await GenerateForbiddenResponse(httpContext, "ApiKey not found inside request headers");
             }
@@ -57,11 +60,37 @@ namespace AuthMiddlewareApi.Authentication
                 _logger.LogInformation("ApiKey validated: {ApiKey}", apiKey);
 
 
-                var id = GetClaimsIdentity("SDK/APP");
+                var id = GetClaimsIdentity(requester);
                 httpContext.User.AddIdentity(id);
                 //Proceed with pipeline
                 await _next(httpContext);
             }
+        }
+
+        private string GetRequester(string authToken, string apiKey)
+        {
+            var requester = string.Empty;
+
+            if (IsNullOrWhiteSpace(authToken) == false)
+                requester += "UI/USER";
+            if (IsNullOrWhiteSpace(authToken) && IsNullOrWhiteSpace(apiKey) && false)
+                requester += "-";
+            if (IsNullOrWhiteSpace(apiKey) == false)
+                requester += "SDK/APP";
+
+            return requester;
+        }
+
+        private bool IsNullOrWhiteSpace(string value)
+        {
+            return string.IsNullOrWhiteSpace(value);
+        }
+
+        private static string GetHeaderVauleOrEmpty(HttpContext httpContext, string headerKey)
+        {
+            if (httpContext.Request.Headers.TryGetValue(headerKey, out var value))
+                return value;
+            return string.Empty;
         }
 
         private static bool IsHttpContextValid(HttpContext httpContext)
@@ -112,7 +141,7 @@ namespace AuthMiddlewareApi.Authentication
             await context.Response.BodyWriter.WriteAsync(responseStream.ToArray());
         }
 
-        private async Task SetResponseBody(HttpContext context, int httpStatusCode,  string message)
+        private async Task SetResponseBody(HttpContext context, int httpStatusCode, string message)
         {
             context.Response.StatusCode = httpStatusCode;
             context.Response.ContentType = MediaTypeNames.Application.Json;

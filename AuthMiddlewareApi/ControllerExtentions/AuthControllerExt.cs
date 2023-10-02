@@ -25,11 +25,11 @@ namespace AuthMiddlewareApi.ControllerExtentions
                 .WithOpenApi();
         }
 
-        private static Func<HttpContext, string> GenerateToken()
+        private static Func<HttpContext, object> GenerateToken()
         {
             return (HttpContext httpContext) =>
             {
-                return JwtExtensions.GenerateDefaultToken();
+                return new { Token = JwtExtensions.GenerateDefaultToken() };
             };
         }
     }

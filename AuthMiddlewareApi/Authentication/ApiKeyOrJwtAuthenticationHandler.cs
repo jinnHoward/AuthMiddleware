@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System.Net.Mime;
@@ -9,7 +8,7 @@ using System.Text.Json;
 
 namespace AuthMiddlewareApi.Authentication
 {
-    public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>
+    public class ApiKeyOrJwtAuthenticationHandler : AuthenticationHandler<ApiKeyOrJwtAuthenticationOptions>
     {
         private static readonly string API_KEY_HEADER = "X-Api-Key";
         private enum AuthenticationFailureReason
@@ -19,12 +18,11 @@ namespace AuthMiddlewareApi.Authentication
             API_KEY_HEADER_VALUE_NULL,
             API_KEY_INVALID
         }
-
         private readonly Microsoft.Extensions.Logging.ILogger _logger;
 
         private AuthenticationFailureReason _failureReason = AuthenticationFailureReason.NONE;
 
-        public ApiKeyAuthenticationHandler(IOptionsMonitor<ApiKeyAuthenticationOptions> options,
+        public ApiKeyOrJwtAuthenticationHandler(IOptionsMonitor<ApiKeyOrJwtAuthenticationOptions> options,
                                            ILoggerFactory loggerFactory,
                                            ILogger<ApiKeyAuthenticationHandler> logger,
                                            UrlEncoder encoder,
@@ -33,23 +31,42 @@ namespace AuthMiddlewareApi.Authentication
             _logger = logger;
         }
 
-        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+        protected async override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            //ApiKey header get
-            if (!TryGetApiKeyHeader(out string providedApiKey, out AuthenticateResult authenticateResult))
+
+            if (Request.Headers.TryGetValue("Authorization", out var authToken))
             {
-                return authenticateResult;
-            }
+                if ((await JwtExtensions.ValidateToken(authToken!, null)).IsValid)
+                {
+                    var identity = GetClaimsIdentity("UI/USER");
 
-            //TODO: you apikey validity check
-            if (await ApiKeyCheckAsync(providedApiKey))
+                    var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
+                    principal.AddIdentity(identity);
+                    var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationOptions.Scheme);
+
+                    return AuthenticateResult.Success(ticket);
+                }
+            }
+            //Get apikey header
+            if (Request.Headers.TryGetValue(API_KEY_HEADER, out var apiKey))
             {
-                var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
-                var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationOptions.Scheme);
+                if (!await ApiKeyCheckAsync(apiKey))
+                {
+                    _logger.LogError("ApiKey is not valid: {ApiKey}", apiKey);
+                }
+                else
+                {
+                    _logger.LogInformation("ApiKey validated: {ApiKey}", apiKey);
 
-                return AuthenticateResult.Success(ticket);
+
+                    var identity = GetClaimsIdentity("SDK/APP");
+
+                    var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
+                    principal.AddIdentity(identity);
+                    var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationOptions.Scheme);
+                    return AuthenticateResult.Success(ticket);
+                }
             }
-
             _failureReason = AuthenticationFailureReason.API_KEY_INVALID;
             return AuthenticateResult.NoResult();
         }
@@ -96,65 +113,27 @@ namespace AuthMiddlewareApi.Authentication
             await Response.BodyWriter.WriteAsync(responseStream.ToArray());
         }
 
-
         private Task<bool> ApiKeyCheckAsync(string apiKey)
         {
             //TODO: setup your validation code...
             return Task.FromResult<bool>(apiKey == "EECBA5A9-5541-4D58-A2A2-C6A46AC3D03C");
         }
-
-        private async Task GenerateForbiddenResponse(HttpContext context, string message)
+        private static ClaimsIdentity GetClaimsIdentity(string requester)
         {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            context.Response.ContentType = MediaTypeNames.Application.Json;
-
-            using var responseStream = new MemoryStream();
-            await System.Text.Json.JsonSerializer.SerializeAsync(responseStream, new
-            {
-                Status = StatusCodes.Status403Forbidden,
-                Message = message
-            });
-
-            await context.Response.BodyWriter.WriteAsync(responseStream.ToArray());
+            var id = new ClaimsIdentity();
+            id.AddClaim(new Claim("UserId", "12345"));
+            id.AddClaim(new Claim("CompanyId", "6789"));
+            id.AddClaim(new Claim("DepartmentId", "10"));
+            id.AddClaim(new Claim("Requester", requester, null, "https://microsoftsecurity"));
+            return id;
         }
-
-        #region Privates
-        private bool TryGetApiKeyHeader(out string apiKeyHeaderValue, out AuthenticateResult result)
-        {
-            apiKeyHeaderValue = null;
-            if (!Request.Headers.TryGetValue("X-Api-Key", out var apiKeyHeaderValues))
-            {
-                _logger.LogError("ApiKey header not provided");
-
-                _failureReason = AuthenticationFailureReason.API_KEY_HEADER_NOT_PROVIDED;
-                result = AuthenticateResult.Fail("ApiKey header not provided");
-
-                return false;
-            }
-
-            apiKeyHeaderValue = apiKeyHeaderValues.FirstOrDefault();
-            if (apiKeyHeaderValues.Count == 0 || string.IsNullOrWhiteSpace(apiKeyHeaderValue))
-            {
-                _logger.LogError("ApiKey header value null");
-
-                _failureReason = AuthenticationFailureReason.API_KEY_HEADER_VALUE_NULL;
-                result = AuthenticateResult.Fail("ApiKey header value null");
-
-                return false;
-            }
-
-            result = null;
-            return true;
-        }       
-        #endregion
     }
 
-    public class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions
+    public class ApiKeyOrJwtAuthenticationOptions : AuthenticationSchemeOptions
     {
         public const string DefaultScheme = "ApiKey";
 
         public static string Scheme => DefaultScheme;
         public static string AuthenticationType => DefaultScheme;
     }
-
 }
