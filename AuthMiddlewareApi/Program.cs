@@ -1,7 +1,11 @@
 
 using AuthMiddlewareApi.Authentication;
-using AuthMiddlewareApi.Authorization;
+using AuthMiddlewareApi.Authentication.Extentions;
+using AuthMiddlewareApi.Authorization.ApiKey;
+using AuthMiddlewareApi.Authorization.ApiKeyOrJwt;
+using AuthMiddlewareApi.Authorization.Jwt;
 using AuthMiddlewareApi.ControllerExtentions;
+using AuthMiddlewareApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -16,18 +20,8 @@ namespace AuthMiddlewareApi
 {
     public static class Program
     {
-        public const string AccessAudience = "TestAud";
-        private const string API_OR_JWT = "API_OR_JWT";
-        private const string OR_API = "OR_API";
-        private const string OR_JWT = "OR_JWT";
-
-        private const string API_AND_JWT = "API_AND_JWT";
-        private const string AND_API = "AND_API";
-        private const string AND_JWT = "AND_JWT";
-        
-        private const string JWT_ONLY = "JWT_ONLY";
-        private const string API_ONLY = "API_ONLY";
-
+        private const string ApiSecret = "ProEMLh5e_qnzdNU";
+        private const string EncryptionKey = "ProEMLh5e_qnzdNU";
         private static ConfigurationManager _config;
         private static string _environment;
 
@@ -73,44 +67,44 @@ namespace AuthMiddlewareApi
         {
             services.AddAuthentication(options =>
                 {
-                    options.DefaultAuthenticateScheme = API_OR_JWT;
-                    options.DefaultChallengeScheme = API_OR_JWT;
+                    options.DefaultAuthenticateScheme = AuthConstants.API_OR_JWT;
+                    options.DefaultChallengeScheme = AuthConstants.API_OR_JWT;
                 })
-                .AddApiKeyOrJwtSupport(OR_API, options => { })
-                .AddJwtBearer(OR_JWT, GetDefaultJwtOptions())
-                .AddPolicyScheme(API_OR_JWT, API_OR_JWT, options =>
+                .AddApiKeyOrJwtSupport(AuthConstants.OR_API, options => { })
+                .AddJwtBearer(AuthConstants.OR_JWT, GetDefaultJwtOptions())
+                .AddPolicyScheme(AuthConstants.API_OR_JWT, AuthConstants.API_OR_JWT, options =>
                 {
                     options.ForwardDefaultSelector = context =>
                     {
                         string? authorization = context.Request.Headers[HeaderNames.Authorization];
                         if (!string.IsNullOrEmpty(authorization) && authorization.StartsWith("Bearer "))
                         {
-                            return OR_JWT;
+                            return AuthConstants.OR_JWT;
                         }
-                        return OR_API;
+                        return AuthConstants.OR_API;
                     };
                 });
 
             services.AddAuthentication(options =>
                 {
-                    options.DefaultAuthenticateScheme = JWT_ONLY;
-                    options.DefaultChallengeScheme = JWT_ONLY;
-                    options.DefaultScheme = JWT_ONLY;
+                    options.DefaultAuthenticateScheme = AuthConstants.JWT_ONLY;
+                    options.DefaultChallengeScheme = AuthConstants.JWT_ONLY;
+                    options.DefaultScheme = AuthConstants.JWT_ONLY;
                 })
-                .AddJwtBearer(JWT_ONLY, GetDefaultJwtOptions());
+                .AddJwtBearer(AuthConstants.JWT_ONLY, GetDefaultJwtOptions());
 
             services.AddAuthentication(options =>
                 {
-                    options.DefaultAuthenticateScheme = API_ONLY;
-                    options.DefaultChallengeScheme = API_ONLY;
-                    options.DefaultScheme = API_ONLY;
+                    options.DefaultAuthenticateScheme = AuthConstants.API_ONLY;
+                    options.DefaultChallengeScheme = AuthConstants.API_ONLY;
+                    options.DefaultScheme = AuthConstants.API_ONLY;
                 })
-                .AddApiKeySupport(API_ONLY, options => { });
+                .AddApiKeySupport(AuthConstants.API_ONLY, options => { });
 
             services.AddAuthentication(options =>
                 {
-                    options.DefaultAuthenticateScheme = API_AND_JWT;
-                    options.DefaultChallengeScheme = API_AND_JWT;
+                    options.DefaultAuthenticateScheme = AuthConstants.API_AND_JWT;
+                    options.DefaultChallengeScheme = AuthConstants.API_AND_JWT;
                 })
                 .AddApiKeySupport(options => { })
                 .AddJwtBearer(GetDefaultJwtOptions());
@@ -118,26 +112,21 @@ namespace AuthMiddlewareApi
 
             services.AddAuthorization(options =>
             {
-                options.AddPolicy("API_OR_JWT", (policy) => policy.AddRequirements(new ApiKeyOrJwtAccessRequirement()));
-                options.AddPolicy("API_AND_JWT", policy => policy.AddRequirements(new ApiKeyRequirement(), new JwtRequirement()));
-                options.AddPolicy("JWT_ONLY", policy => policy.AddRequirements(new JwtRequirement()));
-                options.AddPolicy("API_ONLY", policy => policy.AddRequirements(new ApiKeyRequirement()));
+                options.AddPolicy(AuthConstants.API_OR_JWT, (policy) => policy.AddRequirements(new ApiKeyOrJwtAccessRequirement()));
+                options.AddPolicy(AuthConstants.API_AND_JWT, policy => policy.AddRequirements(new ApiKeyRequirement(), new JwtRequirement()));
+                options.AddPolicy(AuthConstants.JWT_ONLY, policy => policy.AddRequirements(new JwtRequirement()));
+                options.AddPolicy(AuthConstants.API_ONLY, policy => policy.AddRequirements(new ApiKeyRequirement()));
             });
 
             services.AddEndpointsApiExplorer();
             services.AddSwaggerGen();
         }
 
-        private static Action<ApiKeyOrJwtAuthenticationOptions> GetDefaultApiKeyOrJwtOptions()
-        {
-            return options => { };
-        }
-
         private static Action<JwtBearerOptions> GetDefaultJwtOptions()
         {
             return jwtOptions =>
             {
-                jwtOptions.TokenValidationParameters = JwtExtensions.GetValidationParameters("ProEMLh5e_qnzdNU", "ProEMLh5e_qnzdNU");
+                jwtOptions.TokenValidationParameters = JwtExt.GetValidationParameters(ApiSecret, EncryptionKey);
             };
         }
 
@@ -153,7 +142,7 @@ namespace AuthMiddlewareApi
             app.UseMiddleware<ApiKeyOrJwtMiddleware>();  //Register as first middleware to avoid other middleware execution before api key check
             app.UseAuthorization();
 
-            app.MapAuthApiController();
+            app.MapAuthApiController(ApiSecret);
             app.MapWeatherApiController();
 
             return app;

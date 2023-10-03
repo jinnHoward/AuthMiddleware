@@ -6,12 +6,12 @@ using System.Net.Mime;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using AuthMiddlewareApi.Authentication.Extentions;
 
 namespace AuthMiddlewareApi.Authentication
 {
     public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>
     {
-        private static readonly string API_KEY_HEADER = "X-Api-Key";
         private enum AuthenticationFailureReason
         {
             NONE = 0,
@@ -42,7 +42,7 @@ namespace AuthMiddlewareApi.Authentication
             }
 
             //TODO: you apikey validity check
-            if (await ApiKeyCheckAsync(providedApiKey))
+            if (await ApiKeyExt.ApiKeyCheckAsync(providedApiKey))
             {
                 var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
                 var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationOptions.Scheme);
@@ -96,33 +96,10 @@ namespace AuthMiddlewareApi.Authentication
             await Response.BodyWriter.WriteAsync(responseStream.ToArray());
         }
 
-
-        private Task<bool> ApiKeyCheckAsync(string apiKey)
-        {
-            //TODO: setup your validation code...
-            return Task.FromResult<bool>(apiKey == "EECBA5A9-5541-4D58-A2A2-C6A46AC3D03C");
-        }
-
-        private async Task GenerateForbiddenResponse(HttpContext context, string message)
-        {
-            context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            context.Response.ContentType = MediaTypeNames.Application.Json;
-
-            using var responseStream = new MemoryStream();
-            await System.Text.Json.JsonSerializer.SerializeAsync(responseStream, new
-            {
-                Status = StatusCodes.Status403Forbidden,
-                Message = message
-            });
-
-            await context.Response.BodyWriter.WriteAsync(responseStream.ToArray());
-        }
-
-        #region Privates
         private bool TryGetApiKeyHeader(out string apiKeyHeaderValue, out AuthenticateResult result)
         {
             apiKeyHeaderValue = null;
-            if (!Request.Headers.TryGetValue("X-Api-Key", out var apiKeyHeaderValues))
+            if (!Request.Headers.TryGetValue(ApiKeyExt.API_KEY_HEADER, out var apiKeyHeaderValues))
             {
                 _logger.LogError("ApiKey header not provided");
 
@@ -146,7 +123,6 @@ namespace AuthMiddlewareApi.Authentication
             result = null;
             return true;
         }       
-        #endregion
     }
 
     public class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions

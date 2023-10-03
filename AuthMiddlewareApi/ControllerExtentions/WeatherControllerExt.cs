@@ -1,4 +1,6 @@
-﻿namespace AuthMiddlewareApi.ControllerExtentions
+﻿using AuthMiddlewareApi.Models;
+
+namespace AuthMiddlewareApi.ControllerExtentions
 {
     internal static class WeatherControllerExt
     {

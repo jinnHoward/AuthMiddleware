@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using AuthMiddlewareApi.Authentication.Extentions;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System.Net.Mime;
@@ -24,7 +25,7 @@ namespace AuthMiddlewareApi.Authentication
 
         public ApiKeyOrJwtAuthenticationHandler(IOptionsMonitor<ApiKeyOrJwtAuthenticationOptions> options,
                                            ILoggerFactory loggerFactory,
-                                           ILogger<ApiKeyAuthenticationHandler> logger,
+                                           ILogger<ApiKeyOrJwtAuthenticationHandler> logger,
                                            UrlEncoder encoder,
                                            ISystemClock clock) : base(options, loggerFactory, encoder, clock)
         {
@@ -36,13 +37,13 @@ namespace AuthMiddlewareApi.Authentication
 
             if (Request.Headers.TryGetValue("Authorization", out var authToken))
             {
-                if ((await JwtExtensions.ValidateToken(authToken!, null)).IsValid)
+                if ((await JwtExt.ValidateToken(authToken!, null)).IsValid)
                 {
                     var identity = GetClaimsIdentity("UI/USER");
 
                     var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
                     principal.AddIdentity(identity);
-                    var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationOptions.Scheme);
+                    var ticket = new AuthenticationTicket(principal, ApiKeyOrJwtAuthenticationOptions.Scheme);
 
                     return AuthenticateResult.Success(ticket);
                 }
@@ -63,7 +64,7 @@ namespace AuthMiddlewareApi.Authentication
 
                     var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
                     principal.AddIdentity(identity);
-                    var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationOptions.Scheme);
+                    var ticket = new AuthenticationTicket(principal, ApiKeyOrJwtAuthenticationOptions.Scheme);
                     return AuthenticateResult.Success(ticket);
                 }
             }
@@ -74,7 +75,7 @@ namespace AuthMiddlewareApi.Authentication
         protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
             //Create response
-            Response.Headers.Append(HeaderNames.WWWAuthenticate, $@"Authorization realm=""{ApiKeyAuthenticationOptions.DefaultScheme}""");
+            Response.Headers.Append(HeaderNames.WWWAuthenticate, $@"Authorization realm=""{ApiKeyOrJwtAuthenticationOptions.DefaultScheme}""");
             Response.StatusCode = StatusCodes.Status401Unauthorized;
             Response.ContentType = MediaTypeNames.Application.Json;
 
@@ -98,7 +99,7 @@ namespace AuthMiddlewareApi.Authentication
         protected override async Task HandleForbiddenAsync(AuthenticationProperties properties)
         {
             //Create response
-            Response.Headers.Append(HeaderNames.WWWAuthenticate, $@"Authorization realm=""{ApiKeyAuthenticationOptions.DefaultScheme}""");
+            Response.Headers.Append(HeaderNames.WWWAuthenticate, $@"Authorization realm=""{ApiKeyOrJwtAuthenticationOptions.DefaultScheme}""");
             Response.StatusCode = StatusCodes.Status403Forbidden;
             Response.ContentType = MediaTypeNames.Application.Json;
 
@@ -118,6 +119,7 @@ namespace AuthMiddlewareApi.Authentication
             //TODO: setup your validation code...
             return Task.FromResult<bool>(apiKey == "EECBA5A9-5541-4D58-A2A2-C6A46AC3D03C");
         }
+
         private static ClaimsIdentity GetClaimsIdentity(string requester)
         {
             var id = new ClaimsIdentity();

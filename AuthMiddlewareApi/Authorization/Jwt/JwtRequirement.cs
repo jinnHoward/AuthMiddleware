@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
-namespace AuthMiddlewareApi.Authorization
+namespace AuthMiddlewareApi.Authorization.Jwt
 {
     public class JwtRequirement : IAuthorizationRequirement
     {

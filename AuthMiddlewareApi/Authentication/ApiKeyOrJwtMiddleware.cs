@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.DataProtection;
 using System.Net.Mime;
 using System.Security.Claims;
 using System.Security.Cryptography.Xml;
+using AuthMiddlewareApi.Authentication.Extentions;
 
 namespace AuthMiddlewareApi.Authentication
 {
     public class ApiKeyOrJwtMiddleware
     {
-        private static readonly string API_KEY_HEADER = "X-Api-Key";
+        private static readonly string AUTHORIZATION_HEADER = "Authorization";
 
         private readonly RequestDelegate _next;
         private readonly ILogger<ApiKeyOrJwtMiddleware> _logger;
@@ -26,13 +27,13 @@ namespace AuthMiddlewareApi.Authentication
                 await _next(httpContext);
                 return;
             }
-            var authToken = GetHeaderVauleOrEmpty(httpContext, "Authorization");
-            var apiKey = GetHeaderVauleOrEmpty(httpContext, API_KEY_HEADER);
+            var authToken = GetHeaderVauleOrEmpty(httpContext, AUTHORIZATION_HEADER);
+            var apiKey = GetHeaderVauleOrEmpty(httpContext, ApiKeyExt.API_KEY_HEADER);
             var requester = GetRequester(authToken, apiKey);
 
             if (IsNullOrWhiteSpace(authToken) == false)
             {
-                if ((await JwtExtensions.ValidateToken(authToken!, null)).IsValid)
+                if ((await JwtExt.ValidateToken(authToken!, null)).IsValid)
                 {
                     var identity = GetClaimsIdentity(requester);
                     httpContext.User.AddIdentity(identity);
@@ -41,14 +42,13 @@ namespace AuthMiddlewareApi.Authentication
                 }
                 else
                     await GenerateForbiddenResponse(httpContext, "JWT not valid.");
-
             }
             //Get apikey header
             else if (IsNullOrWhiteSpace(apiKey))
             {
                 await GenerateForbiddenResponse(httpContext, "ApiKey not found inside request headers");
             }
-            else if (!await ApiKeyCheckAsync(apiKey))
+            else if (!await ApiKeyExt.ApiKeyCheckAsync(apiKey))
             {
                 _logger.LogError("ApiKey is not valid: {ApiKey}", apiKey);
 
@@ -89,7 +89,7 @@ namespace AuthMiddlewareApi.Authentication
         private static string GetHeaderVauleOrEmpty(HttpContext httpContext, string headerKey)
         {
             if (httpContext.Request.Headers.TryGetValue(headerKey, out var value))
-                return value;
+                return value!;
             return string.Empty;
         }
 
@@ -118,12 +118,6 @@ namespace AuthMiddlewareApi.Authentication
             id.AddClaim(new Claim("DepartmentId", "10"));
             id.AddClaim(new Claim("Requester", requester, null, "https://microsoftsecurity"));
             return id;
-        }
-
-        private Task<bool> ApiKeyCheckAsync(string apiKey)
-        {
-            //TODO: setup your validation code...
-            return Task.FromResult<bool>(apiKey == "EECBA5A9-5541-4D58-A2A2-C6A46AC3D03C");
         }
 
         private async Task GenerateForbiddenResponse(HttpContext context, string message)

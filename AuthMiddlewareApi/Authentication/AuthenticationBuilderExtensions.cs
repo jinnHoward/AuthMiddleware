@@ -8,7 +8,6 @@ namespace AuthMiddlewareApi.Authentication
             => authenticationBuilder.AddScheme<ApiKeyOrJwtAuthenticationOptions, ApiKeyOrJwtAuthenticationHandler>(schemeName, options);
 
         public static AuthenticationBuilder AddApiKeyOrJwtSupport(this AuthenticationBuilder authenticationBuilder, Action<ApiKeyOrJwtAuthenticationOptions> options)
-
             => authenticationBuilder.AddScheme<ApiKeyOrJwtAuthenticationOptions, ApiKeyOrJwtAuthenticationHandler>(ApiKeyOrJwtAuthenticationOptions.DefaultScheme, options);
 
         public static AuthenticationBuilder AddApiKeySupport(this AuthenticationBuilder authenticationBuilder, Action<ApiKeyAuthenticationOptions> options)

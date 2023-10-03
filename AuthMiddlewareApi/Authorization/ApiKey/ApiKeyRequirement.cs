@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
-namespace AuthMiddlewareApi.Authorization
+namespace AuthMiddlewareApi.Authorization.ApiKey
 {
     public class ApiKeyRequirement : IAuthorizationRequirement
     {

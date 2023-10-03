@@ -1,4 +1,4 @@
-namespace AuthMiddlewareApi
+namespace AuthMiddlewareApi.Models
 {
     public class WeatherForecast
     {

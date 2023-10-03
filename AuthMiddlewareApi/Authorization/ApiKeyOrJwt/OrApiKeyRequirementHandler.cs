@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using AuthMiddlewareApi.Authorization.ApiKey;
+using Microsoft.AspNetCore.Authorization;
 
-namespace AuthMiddlewareApi.Authorization
+namespace AuthMiddlewareApi.Authorization.ApiKeyOrJwt
 {
     public class OrApiKeyRequirementHandler : AuthorizationHandler<ApiKeyOrJwtAccessRequirement>
     {

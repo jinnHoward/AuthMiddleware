@@ -3,13 +3,12 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
-namespace AuthMiddlewareApi.Authentication
+namespace AuthMiddlewareApi.Authentication.Extentions
 {
-    public static class JwtExtensions
+    public static class JwtExt
     {
         public const string Issuer = "https://microsoftsecurity";
         public const string Audience = "Test";
-        private static string _apiSecret = "ProEMLh5e_qnzdNU";
 
         internal static TokenValidationParameters GetValidationParameters(SymmetricSecurityKey symmetricSecurityKey, SymmetricSecurityKey encryptionSecurityKey, string audience)
         {
@@ -31,24 +30,24 @@ namespace AuthMiddlewareApi.Authentication
         {
             //TODO: Setup JWT token Validation
             if (validationParameters == null)
-                return new TokenValidationResult() { IsValid = (string.IsNullOrWhiteSpace(refreshToken) == false) };
+                return new TokenValidationResult() { IsValid = string.IsNullOrWhiteSpace(refreshToken) == false };
 
             return await new JwtSecurityTokenHandler().ValidateTokenAsync(refreshToken, validationParameters);
         }
 
-        public static string GenerateDefaultToken()
+        public static string GenerateDefaultToken(string apiSecret)
         {
             var token = new JwtSecurityToken(
              issuer: Issuer,
              audience: Audience,
              expires: DateTime.Now.AddHours(3),
-             signingCredentials: GetSigningCredentials(_apiSecret)
+             signingCredentials: GetSigningCredentials(apiSecret)
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        internal static TokenValidationParameters GetValidationParameters(string apiKey, string encryptionKey)
-            => GetValidationParameters(GetSecurityKey(apiKey), GetSecurityKey(encryptionKey), Audience);
+        internal static TokenValidationParameters GetValidationParameters(string apiSecret, string encryptionKey)
+            => GetValidationParameters(GetSecurityKey(apiSecret), GetSecurityKey(encryptionKey), Audience);
 
         internal static SigningCredentials GetSigningCredentials(string key)
             => new(GetSecurityKey(key), SecurityAlgorithms.HmacSha256);
