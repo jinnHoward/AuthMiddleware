@@ -1,5 +1,7 @@
 ﻿using AuthMiddlewareApi.Authentication.Extentions;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using System.Net.Mime;
@@ -11,7 +13,6 @@ namespace AuthMiddlewareApi.Authentication
 {
     public class ApiKeyOrJwtAuthenticationHandler : AuthenticationHandler<ApiKeyOrJwtAuthenticationOptions>
     {
-        private static readonly string API_KEY_HEADER = "X-Api-Key";
         private enum AuthenticationFailureReason
         {
             NONE = 0,
@@ -19,6 +20,8 @@ namespace AuthMiddlewareApi.Authentication
             API_KEY_HEADER_VALUE_NULL,
             API_KEY_INVALID
         }
+
+        private readonly IOptionsMonitor<ApiKeyOrJwtAuthenticationOptions> _options;
         private readonly Microsoft.Extensions.Logging.ILogger _logger;
 
         private AuthenticationFailureReason _failureReason = AuthenticationFailureReason.NONE;
@@ -29,46 +32,59 @@ namespace AuthMiddlewareApi.Authentication
                                            UrlEncoder encoder,
                                            ISystemClock clock) : base(options, loggerFactory, encoder, clock)
         {
+            _options = options;
             _logger = logger;
         }
 
         protected async override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            if (AuthOptions.None == _options.CurrentValue.AuthOption)
+                return SetDefaultFailureAndReturn();
 
-            if (Request.Headers.TryGetValue("Authorization", out var authToken))
-            {
-                if ((await JwtExt.ValidateToken(authToken!, null)).IsValid)
-                {
-                    var identity = GetClaimsIdentity("UI/USER");
-
-                    var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
-                    principal.AddIdentity(identity);
-                    var ticket = new AuthenticationTicket(principal, ApiKeyOrJwtAuthenticationOptions.Scheme);
-
-                    return AuthenticateResult.Success(ticket);
-                }
-            }
-            //Get apikey header
-            if (Request.Headers.TryGetValue(API_KEY_HEADER, out var apiKey))
-            {
-                if (!await ApiKeyCheckAsync(apiKey))
-                {
-                    _logger.LogError("ApiKey is not valid: {ApiKey}", apiKey);
-                }
-                else
-                {
-                    _logger.LogInformation("ApiKey validated: {ApiKey}", apiKey);
+            var authToken = AuthenticationLogic.GetHeaderValueOrEmpty(Request, AuthenticationLogic.AUTHORIZATION_HEADER);
+            var apiKey = AuthenticationLogic.GetHeaderValueOrEmpty(Request, ApiKeyExt.API_KEY_HEADER);
+            var requester = AuthenticationLogic.GetRequester(authToken, apiKey);
+            var isApiKeyValid = false;
+            var isJwtValid = false;
 
 
-                    var identity = GetClaimsIdentity("SDK/APP");
+            if (IsJwtValidationRequired())
+                isJwtValid = (await JwtExt.ValidateToken(authToken!, null)).IsValid;
 
-                    var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
-                    principal.AddIdentity(identity);
-                    var ticket = new AuthenticationTicket(principal, ApiKeyOrJwtAuthenticationOptions.Scheme);
-                    return AuthenticateResult.Success(ticket);
-                }
-            }
-            _failureReason = AuthenticationFailureReason.API_KEY_INVALID;
+            if (IsApiKeyValidationRequired())
+                isApiKeyValid = await ApiKeyCheckAsync(apiKey);                
+
+            if (IsJwtValidationRequired() == isJwtValid && IsApiKeyValidationRequired() == isApiKeyValid)
+                return GetSuccessfullAuthResult(requester);
+
+
+            return SetDefaultFailureAndReturn();
+        }
+
+        private bool IsApiKeyValidationRequired()
+        {
+            return _options.CurrentValue.AuthOption == AuthOptions.ApiOnly || _options.CurrentValue.AuthOption == AuthOptions.ApiOrJwt || _options.CurrentValue.AuthOption == AuthOptions.ApiAndJwt;
+        }
+
+        private static AuthenticateResult GetSuccessfullAuthResult(string requester)
+        {
+            var identity = GetClaimsIdentity(requester);
+
+            var principal = new ClaimsPrincipal();  //TODO: Create your Identity retreiving claims
+            principal.AddIdentity(identity);
+            var ticket = new AuthenticationTicket(principal, ApiKeyOrJwtAuthenticationOptions.Scheme);
+
+            return AuthenticateResult.Success(ticket);
+        }
+
+        private bool IsJwtValidationRequired()
+        {
+            return _options.CurrentValue.AuthOption == AuthOptions.JwtOnly || _options.CurrentValue.AuthOption == AuthOptions.ApiOrJwt || _options.CurrentValue.AuthOption == AuthOptions.ApiAndJwt;
+        }
+
+        private AuthenticateResult SetDefaultFailureAndReturn()
+        {
+            _failureReason = AuthenticationFailureReason.NONE;
             return AuthenticateResult.NoResult();
         }
 
@@ -85,9 +101,10 @@ namespace AuthMiddlewareApi.Authentication
                 StatusCode = Response.StatusCode,
                 Message = _failureReason switch
                 {
+                    AuthenticationFailureReason.NONE => "Authentication failed",
                     AuthenticationFailureReason.API_KEY_HEADER_NOT_PROVIDED => "ApiKey not provided",
-                    AuthenticationFailureReason.API_KEY_HEADER_VALUE_NULL => "ApiKey value is null",
-                    AuthenticationFailureReason.NONE or AuthenticationFailureReason.API_KEY_INVALID or _ => "ApiKey is not valid"
+                    AuthenticationFailureReason.API_KEY_HEADER_VALUE_NULL => "ApiKey value is null",                     
+                    AuthenticationFailureReason.API_KEY_INVALID or _ => "ApiKey is not valid"
                 }
             };
 
@@ -117,7 +134,13 @@ namespace AuthMiddlewareApi.Authentication
         private Task<bool> ApiKeyCheckAsync(string apiKey)
         {
             //TODO: setup your validation code...
-            return Task.FromResult<bool>(apiKey == "EECBA5A9-5541-4D58-A2A2-C6A46AC3D03C");
+            var isValid = apiKey == "EECBA5A9-5541-4D58-A2A2-C6A46AC3D03C";
+            if (isValid)
+                _logger.LogInformation("ApiKey validated: {ApiKey}", apiKey);
+            else 
+                _logger.LogError("ApiKey is not valid: {ApiKey}", apiKey);
+
+            return Task.FromResult<bool>(isValid);
         }
 
         private static ClaimsIdentity GetClaimsIdentity(string requester)
@@ -137,5 +160,16 @@ namespace AuthMiddlewareApi.Authentication
 
         public static string Scheme => DefaultScheme;
         public static string AuthenticationType => DefaultScheme;
+        public AuthOptions AuthOption { get; set; }
+
+    }
+
+    public enum AuthOptions
+    {
+        None = 0,
+        ApiOnly = 1,
+        JwtOnly = 2,
+        ApiOrJwt = 3,
+        ApiAndJwt = 4,
     }
 }

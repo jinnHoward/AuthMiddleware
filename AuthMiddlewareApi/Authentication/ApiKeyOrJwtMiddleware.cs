@@ -9,8 +9,6 @@ namespace AuthMiddlewareApi.Authentication
 {
     public class ApiKeyOrJwtMiddleware
     {
-        private static readonly string AUTHORIZATION_HEADER = "Authorization";
-
         private readonly RequestDelegate _next;
         private readonly ILogger<ApiKeyOrJwtMiddleware> _logger;
 
@@ -27,15 +25,15 @@ namespace AuthMiddlewareApi.Authentication
                 await _next(httpContext);
                 return;
             }
-            var authToken = GetHeaderVauleOrEmpty(httpContext, AUTHORIZATION_HEADER);
-            var apiKey = GetHeaderVauleOrEmpty(httpContext, ApiKeyExt.API_KEY_HEADER);
-            var requester = GetRequester(authToken, apiKey);
+            var authToken = AuthenticationLogic.GetHeaderValueOrEmpty(httpContext, AuthenticationLogic.AUTHORIZATION_HEADER);
+            var apiKey = AuthenticationLogic.GetHeaderValueOrEmpty(httpContext, ApiKeyExt.API_KEY_HEADER);
+            var requester = AuthenticationLogic.GetRequester(authToken, apiKey);
 
-            if (IsNullOrWhiteSpace(authToken) == false)
+            if (AuthenticationLogic.IsNullOrWhiteSpace(authToken) == false)
             {
                 if ((await JwtExt.ValidateToken(authToken!, null)).IsValid)
                 {
-                    var identity = GetClaimsIdentity(requester);
+                    var identity = AuthenticationLogic.GetClaimsIdentity(requester);
                     httpContext.User.AddIdentity(identity);
 
                     await _next(httpContext);
@@ -44,7 +42,7 @@ namespace AuthMiddlewareApi.Authentication
                     await GenerateForbiddenResponse(httpContext, "JWT not valid.");
             }
             //Get apikey header
-            else if (IsNullOrWhiteSpace(apiKey))
+            else if (AuthenticationLogic.IsNullOrWhiteSpace(apiKey))
             {
                 await GenerateForbiddenResponse(httpContext, "ApiKey not found inside request headers");
             }
@@ -59,41 +57,14 @@ namespace AuthMiddlewareApi.Authentication
             {
                 _logger.LogInformation("ApiKey validated: {ApiKey}", apiKey);
 
-
-                var id = GetClaimsIdentity(requester);
+                var id = AuthenticationLogic.GetClaimsIdentity(requester);
                 httpContext.User.AddIdentity(id);
                 //Proceed with pipeline
                 await _next(httpContext);
             }
         }
 
-        private string GetRequester(string authToken, string apiKey)
-        {
-            var requester = string.Empty;
-
-            if (IsNullOrWhiteSpace(authToken) == false)
-                requester += "UI/USER";
-            if (IsNullOrWhiteSpace(authToken) && IsNullOrWhiteSpace(apiKey) && false)
-                requester += "-";
-            if (IsNullOrWhiteSpace(apiKey) == false)
-                requester += "SDK/APP";
-
-            return requester;
-        }
-
-        private bool IsNullOrWhiteSpace(string value)
-        {
-            return string.IsNullOrWhiteSpace(value);
-        }
-
-        private static string GetHeaderVauleOrEmpty(HttpContext httpContext, string headerKey)
-        {
-            if (httpContext.Request.Headers.TryGetValue(headerKey, out var value))
-                return value!;
-            return string.Empty;
-        }
-
-        private static bool IsHttpContextValid(HttpContext httpContext)
+        public static bool IsHttpContextValid(HttpContext httpContext)
         {
             if (httpContext.GetEndpoint()?.DisplayName == "405 HTTP Method Not Supported")
                 return false;
@@ -108,16 +79,6 @@ namespace AuthMiddlewareApi.Authentication
                 _logger.LogInformation("endpoint is null");
 
             return endpoint?.Metadata?.GetMetadata<IAllowAnonymous>() != null;
-        }
-
-        private static ClaimsIdentity GetClaimsIdentity(string requester)
-        {
-            var id = new ClaimsIdentity();
-            id.AddClaim(new Claim("UserId", "12345"));
-            id.AddClaim(new Claim("CompanyId", "6789"));
-            id.AddClaim(new Claim("DepartmentId", "10"));
-            id.AddClaim(new Claim("Requester", requester, null, "https://microsoftsecurity"));
-            return id;
         }
 
         private async Task GenerateForbiddenResponse(HttpContext context, string message)
