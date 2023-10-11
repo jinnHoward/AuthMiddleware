@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.DataProtection.KeyManagement;
+﻿using AuthMiddlewareApi.Models;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 
 namespace AuthMiddlewareApi.Authentication.Extentions
@@ -21,7 +23,7 @@ namespace AuthMiddlewareApi.Authentication.Extentions
                 ValidIssuer = Issuer,
                 ValidAudience = audience,
                 IssuerSigningKey = symmetricSecurityKey,
-                TokenDecryptionKey = encryptionSecurityKey,
+                //TokenDecryptionKey = encryptionSecurityKey,
                 ClockSkew = TimeSpan.Zero
             };
         }
@@ -35,15 +37,49 @@ namespace AuthMiddlewareApi.Authentication.Extentions
             return await new JwtSecurityTokenHandler().ValidateTokenAsync(refreshToken, validationParameters);
         }
 
+        internal static UserInfo GetUserInfo(TokenValidationResult validatedToken)
+        => new()
+        {
+            UserId = Guid.Parse(validatedToken.Claims[CustomUserClaims.UserId].ToString() ?? string.Empty),
+            Email = validatedToken.Claims[CustomUserClaims.Email].ToString() ?? string.Empty,
+            FirstName = validatedToken.Claims[CustomUserClaims.FirstName].ToString() ?? string.Empty,
+            LastName = validatedToken.Claims[CustomUserClaims.LastName].ToString() ?? string.Empty,
+        };
+
         public static string GenerateDefaultToken(string apiSecret)
         {
             var token = new JwtSecurityToken(
              issuer: Issuer,
              audience: Audience,
              expires: DateTime.Now.AddHours(3),
-             signingCredentials: GetSigningCredentials(apiSecret)
+             signingCredentials: GetSigningCredentials(apiSecret),
+             claims: GetDefaultClaims()             
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        private static IEnumerable<Claim> GetDefaultClaims()
+        {
+            var userInfo = new UserInfo() 
+            {
+                UserId = new Guid(),
+                CompanyId = new Guid(),
+                DepartmentId = new Guid(),
+                FirstName = "Mario",
+                LastName= "Mario",
+                Email = "test@chomp.chomp",
+
+            };
+            var claims = new List<Claim>
+            {
+                new Claim(CustomUserClaims.UserId, userInfo.UserId.ToString()),
+                new Claim(CustomUserClaims.Email, userInfo.Email),
+                new Claim(CustomUserClaims.FirstName, userInfo.FirstName),
+                new Claim(CustomUserClaims.LastName, userInfo.LastName),
+                new Claim(CustomUserClaims.CompanyId, userInfo.CompanyId.ToString()),
+                new Claim(CustomUserClaims.DepartmentId, userInfo.DepartmentId.ToString())
+            };
+            return claims;
         }
 
         internal static TokenValidationParameters GetValidationParameters(string apiSecret, string encryptionKey)

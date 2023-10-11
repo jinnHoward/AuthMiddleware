@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Net.Http.Headers;
 using System.IdentityModel.Tokens.Jwt;
@@ -66,6 +67,7 @@ namespace AuthMiddlewareApi
 
         public static void AddServices(this IServiceCollection services)
         {
+            services.AddAuthentication();
             services.AddAuthorization(options =>
             {
                 options.AddPolicy(AuthConstants.API_OR_JWT, (policy) => policy.AddRequirements(new ApiKeyOrJwtAccessRequirement()));
@@ -95,13 +97,20 @@ namespace AuthMiddlewareApi
             }
 
             app.UseHttpsRedirection();
-            app.UseMiddleware<ApiKeyOrJwtMiddleware>();  //Register as first middleware to avoid other middleware execution before api key check
+            app.UseMiddleware<ApiKeyOrJwtMiddleware>(ApiSecret, EncryptionKey);  //Register as first middleware to avoid other middleware execution before api key check
             app.UseAuthorization();
 
             app.MapAuthApiController(ApiSecret);
             app.MapWeatherApiController();
 
+            if (EnvIsDevelopment())
+                IdentityModelEventSource.ShowPII = true;
+
             return app;
         }
+
+        private static bool EnvIsDevelopment() => _environment.Trim().ToLower().StartsWith("dev");
+        private static bool EnvIsStaging() => _environment.Trim().ToLower().StartsWith("stag");
+        private static bool EnvIsProduction() => _environment.Trim().ToLower().StartsWith("prod");
     }
 }
