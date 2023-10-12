@@ -1,15 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
-using System.Net.Mime;
-using System.Security.Claims;
-using System.Security.Cryptography.Xml;
-using System.Net;
-using Microsoft.Extensions.Primitives;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Microsoft.AspNetCore.Authentication.OAuth;
-using Microsoft.IdentityModel.Tokens;
-using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
+﻿using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
 using JinnStudios.Howard.AuthMiddlewareApi.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
+using System.Net.Mime;
 
 namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication
 {

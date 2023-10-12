@@ -1,5 +1,4 @@
 ﻿using JinnStudios.Howard.AuthMiddlewareApi.Models;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;

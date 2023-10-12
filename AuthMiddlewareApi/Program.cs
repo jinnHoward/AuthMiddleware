@@ -6,16 +6,9 @@ using JinnStudios.Howard.AuthMiddlewareApi.Authorization.Jwt;
 using JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions;
 using JinnStudios.Howard.AuthMiddlewareApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.IdentityModel.Logging;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.Net.Http.Headers;
-using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
-using System.Security.Cryptography.Xml;
-using System.Text;
 
 namespace JinnStudios.Howard.AuthMiddlewareApi
 {
@@ -23,8 +16,8 @@ namespace JinnStudios.Howard.AuthMiddlewareApi
     {
         private const string ApiSecret = "ProEMLh5e_qnzdNU";
         private const string EncryptionKey = "ProEMLh5e_qnzdNU";
-        private static ConfigurationManager? _config;
-        private static string? _environment;
+        private static ConfigurationManager _config = new();
+        private static string _environment = string.Empty;
 
         public static void Main(string[] args)
         {

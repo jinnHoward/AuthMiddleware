@@ -1,10 +1,4 @@
 ﻿using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Net;
-using System.Security.Cryptography.Xml;
-using System.Text;
 
 namespace JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions
 {

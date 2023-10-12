@@ -1,11 +1,10 @@
-﻿using JinnStudios.Howard.AuthMiddlewareApi.Authentication;
-using JinnStudios.Howard.AuthMiddlewareApi.Models;
+﻿using JinnStudios.Howard.AuthMiddlewareApi.Models;
 
 namespace JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions
 {
     internal static class WeatherControllerExt
     {
-        private static string[] summaries = new[]
+        private static readonly string[] summaries = new[]
             {
             "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
             };
