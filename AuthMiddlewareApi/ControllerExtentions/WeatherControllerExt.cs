@@ -1,7 +1,7 @@
-﻿using AuthMiddlewareApi.Authentication;
-using AuthMiddlewareApi.Models;
+﻿using JinnStudios.Howard.AuthMiddlewareApi.Authentication;
+using JinnStudios.Howard.AuthMiddlewareApi.Models;
 
-namespace AuthMiddlewareApi.ControllerExtentions
+namespace JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions
 {
     internal static class WeatherControllerExt
     {
@@ -21,13 +21,13 @@ namespace AuthMiddlewareApi.ControllerExtentions
             weatherController.MapEnpointApiAndJwtAuth("api-key-and-jwt");
         }
 
-        private static void MapEndpointNoAuth(this RouteGroupBuilder grp, string endpointName) 
+        private static void MapEndpointNoAuth(this RouteGroupBuilder grp, string endpointName)
             => grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
                 .AllowAnonymous()
                 .WithName($"GetWeatherForecast-{endpointName}")
                 .WithOpenApi();
 
-        private static void MapEndpointApiAuth(this RouteGroupBuilder grp, string endpointName) 
+        private static void MapEndpointApiAuth(this RouteGroupBuilder grp, string endpointName)
             => MapDefaultGetEndpoint(grp, endpointName, AuthConstants.API_ONLY);
 
         private static void MapEndpointJwtAuth(this RouteGroupBuilder grp, string endpointName)
@@ -39,7 +39,7 @@ namespace AuthMiddlewareApi.ControllerExtentions
         private static void MapEnpointApiAndJwtAuth(this RouteGroupBuilder grp, string endpointName)
             => MapDefaultGetEndpoint(grp, endpointName, AuthConstants.API_AND_JWT);
 
-        private static void MapDefaultGetEndpoint(RouteGroupBuilder grp, string endpointName, string authAttributeName, string openApiEndpointPrefix = "GetWeatherForecast") 
+        private static void MapDefaultGetEndpoint(RouteGroupBuilder grp, string endpointName, string authAttributeName, string openApiEndpointPrefix = "GetWeatherForecast")
             => grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
                 .RequireAuthorization(authAttributeName)
                 .WithName($"{openApiEndpointPrefix}-{endpointName}")

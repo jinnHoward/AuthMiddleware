@@ -1,11 +1,10 @@
-
-using AuthMiddlewareApi.Authentication;
-using AuthMiddlewareApi.Authentication.Extentions;
-using AuthMiddlewareApi.Authorization.ApiKey;
-using AuthMiddlewareApi.Authorization.ApiKeyOrJwt;
-using AuthMiddlewareApi.Authorization.Jwt;
-using AuthMiddlewareApi.ControllerExtentions;
-using AuthMiddlewareApi.Models;
+using JinnStudios.Howard.AuthMiddlewareApi.Authentication;
+using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
+using JinnStudios.Howard.AuthMiddlewareApi.Authorization.ApiKey;
+using JinnStudios.Howard.AuthMiddlewareApi.Authorization.ApiKeyOrJwt;
+using JinnStudios.Howard.AuthMiddlewareApi.Authorization.Jwt;
+using JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions;
+using JinnStudios.Howard.AuthMiddlewareApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Authorization;
@@ -18,14 +17,14 @@ using System.Reflection;
 using System.Security.Cryptography.Xml;
 using System.Text;
 
-namespace AuthMiddlewareApi
+namespace JinnStudios.Howard.AuthMiddlewareApi
 {
     public static class Program
     {
         private const string ApiSecret = "ProEMLh5e_qnzdNU";
         private const string EncryptionKey = "ProEMLh5e_qnzdNU";
-        private static ConfigurationManager _config;
-        private static string _environment;
+        private static ConfigurationManager? _config;
+        private static string? _environment;
 
         public static void Main(string[] args)
         {
@@ -61,7 +60,7 @@ namespace AuthMiddlewareApi
 
         public static WebApplication BuildApp(this WebApplicationBuilder builder)
         {
-            AddServices(builder.Services);
+            builder.Services.AddServices();
             return builder.Build();
         }
 

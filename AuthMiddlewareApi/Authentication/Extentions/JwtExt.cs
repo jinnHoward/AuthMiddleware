@@ -1,11 +1,11 @@
-﻿using AuthMiddlewareApi.Models;
+﻿using JinnStudios.Howard.AuthMiddlewareApi.Models;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace AuthMiddlewareApi.Authentication.Extentions
+namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions
 {
     public static class JwtExt
     {
@@ -53,20 +53,20 @@ namespace AuthMiddlewareApi.Authentication.Extentions
              audience: Audience,
              expires: DateTime.Now.AddHours(3),
              signingCredentials: GetSigningCredentials(apiSecret),
-             claims: GetDefaultClaims()             
+             claims: GetDefaultClaims()
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
         private static IEnumerable<Claim> GetDefaultClaims()
         {
-            var userInfo = new UserInfo() 
+            var userInfo = new UserInfo()
             {
                 UserId = new Guid(),
                 CompanyId = new Guid(),
                 DepartmentId = new Guid(),
                 FirstName = "Mario",
-                LastName= "Mario",
+                LastName = "Mario",
                 Email = "test@chomp.chomp",
 
             };

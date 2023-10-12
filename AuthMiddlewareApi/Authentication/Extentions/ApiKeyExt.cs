@@ -1,4 +1,4 @@
-﻿namespace AuthMiddlewareApi.Authentication.Extentions
+﻿namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions
 {
     public static class ApiKeyExt
     {

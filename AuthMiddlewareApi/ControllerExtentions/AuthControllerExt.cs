@@ -1,5 +1,4 @@
-﻿using AuthMiddlewareApi.Authentication;
-using AuthMiddlewareApi.Authentication.Extentions;
+﻿using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -7,7 +6,7 @@ using System.Net;
 using System.Security.Cryptography.Xml;
 using System.Text;
 
-namespace AuthMiddlewareApi.ControllerExtentions
+namespace JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions
 {
     internal static class AuthControllerExt
     {
@@ -28,7 +27,7 @@ namespace AuthMiddlewareApi.ControllerExtentions
 
         private static Func<HttpContext, object> GenerateToken(string apiSecret)
         {
-            return (HttpContext httpContext) =>
+            return (httpContext) =>
             {
                 return new { Token = JwtExt.GenerateDefaultToken(apiSecret) };
             };

@@ -3,15 +3,15 @@ using Microsoft.AspNetCore.DataProtection;
 using System.Net.Mime;
 using System.Security.Claims;
 using System.Security.Cryptography.Xml;
-using AuthMiddlewareApi.Authentication.Extentions;
 using System.Net;
 using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using AuthMiddlewareApi.Models;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.IdentityModel.Tokens;
+using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
+using JinnStudios.Howard.AuthMiddlewareApi.Models;
 
-namespace AuthMiddlewareApi.Authentication
+namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication
 {
     public class ApiKeyOrJwtMiddleware
     {
@@ -49,7 +49,7 @@ namespace AuthMiddlewareApi.Authentication
                 {
                     case AuthConstants.API_ONLY:
                         apiKey = AuthenticationLogic.GetApiKey(httpContext);
-                        isValidToProceed = await ValidateApiKey(apiKey);                        
+                        isValidToProceed = await ValidateApiKey(apiKey);
                         break;
                     case AuthConstants.JWT_ONLY:
                         authTokenValidator = await ValidateAuthToken(AuthenticationLogic.GetAuthToken(httpContext));
@@ -61,9 +61,9 @@ namespace AuthMiddlewareApi.Authentication
                         isApiKeyValid = await ValidateApiKey(apiKey);
 
                         authTokenValidator = await ValidateAuthToken(AuthenticationLogic.GetAuthToken(httpContext));
-                        isJwtValid = authTokenValidator.IsValid;                        
+                        isJwtValid = authTokenValidator.IsValid;
 
-                        isValidToProceed = (isApiKeyValid || isJwtValid);
+                        isValidToProceed = isApiKeyValid || isJwtValid;
                         break;
                     case AuthConstants.API_AND_JWT:
                         apiKey = AuthenticationLogic.GetApiKey(httpContext);
@@ -72,7 +72,7 @@ namespace AuthMiddlewareApi.Authentication
                         authTokenValidator = await ValidateAuthToken(AuthenticationLogic.GetAuthToken(httpContext));
                         isJwtValid = authTokenValidator.IsValid;
 
-                        isValidToProceed = (isApiKeyValid && isJwtValid);
+                        isValidToProceed = isApiKeyValid && isJwtValid;
                         break;
                     default:
                         break;
@@ -125,10 +125,10 @@ namespace AuthMiddlewareApi.Authentication
             if (isRequired)
             {
                 var validationParameters = JwtExt.GetValidationParameters(_apiSecret, _encryptionKey);
-                tokenValidator = (await JwtExt.ValidateToken(authToken!, validationParameters));
-                
+                tokenValidator = await JwtExt.ValidateToken(authToken!, validationParameters);
+
                 if (tokenValidator.IsValid == false)
-                    _logger.LogError("JWT not valid. {Exception}", tokenValidator.Exception);                
+                    _logger.LogError("JWT not valid. {Exception}", tokenValidator.Exception);
             }
 
             return tokenValidator;
@@ -151,7 +151,7 @@ namespace AuthMiddlewareApi.Authentication
             return endpoint?.Metadata?.GetMetadata<IAllowAnonymous>() != null;
         }
 
-        private static async Task SetResponseCodeForbidden(HttpContext context, string message) 
+        private static async Task SetResponseCodeForbidden(HttpContext context, string message)
             => await SetResponseBody(context, StatusCodes.Status403Forbidden, message);
 
         private static async Task SetResponseBody(HttpContext context, int httpStatusCode, string message)

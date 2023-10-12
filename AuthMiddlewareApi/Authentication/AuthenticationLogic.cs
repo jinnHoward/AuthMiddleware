@@ -1,7 +1,7 @@
-﻿using AuthMiddlewareApi.Authentication.Extentions;
+﻿using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
-namespace AuthMiddlewareApi.Authentication
+namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication
 {
     public static class AuthenticationLogic
     {
@@ -60,7 +60,7 @@ namespace AuthMiddlewareApi.Authentication
         }
 
         internal static string GetAuthToken(HttpContext httpContext)
-            => GetHeaderValueOrEmpty(httpContext, AuthenticationLogic.AUTHORIZATION_HEADER).Replace("Bearer ", string.Empty);
+            => GetHeaderValueOrEmpty(httpContext, AUTHORIZATION_HEADER).Replace("Bearer ", string.Empty);
 
         internal static string GetApiKey(HttpContext httpContext)
             => GetHeaderValueOrEmpty(httpContext, ApiKeyExt.API_KEY_HEADER);

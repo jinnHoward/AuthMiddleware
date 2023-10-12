@@ -1,4 +1,4 @@
-﻿namespace AuthMiddlewareApi.Models
+﻿namespace JinnStudios.Howard.AuthMiddlewareApi.Models
 {
     public static class CustomUserClaims
     {
