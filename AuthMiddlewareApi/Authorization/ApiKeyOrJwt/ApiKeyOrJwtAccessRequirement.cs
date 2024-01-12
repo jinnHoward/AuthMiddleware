@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
-namespace JinnStudios.Howard.AuthMiddlewareApi.Authorization.ApiKeyOrJwt
+namespace JinnHoward.AuthMiddlewareApi.Authorization.ApiKeyOrJwt
 {
     public class ApiKeyOrJwtAccessRequirement : IAuthorizationRequirement
     {

@@ -1,6 +1,6 @@
-﻿using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
+﻿using JinnHoward.AuthMiddlewareApi.Authentication.Extentions;
 
-namespace JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions
+namespace JinnHoward.AuthMiddlewareApi.ControllerExtentions
 {
     internal static class AuthControllerExt
     {

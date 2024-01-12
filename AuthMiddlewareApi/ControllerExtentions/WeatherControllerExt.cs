@@ -1,6 +1,6 @@
-﻿using JinnStudios.Howard.AuthMiddlewareApi.Models;
+﻿using JinnHoward.AuthMiddlewareApi.Models;
 
-namespace JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions
+namespace JinnHoward.AuthMiddlewareApi.ControllerExtentions
 {
     internal static class WeatherControllerExt
     {
@@ -14,6 +14,7 @@ namespace JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions
             var weatherController = app.MapGroup("/api/weatherforecast");
 
             weatherController.MapEndpointNoAuth("none");
+            weatherController.MapEndpointAnonymousAuth("anonymous");
             weatherController.MapEndpointApiAuth("api-key");
             weatherController.MapEndpointJwtAuth("jwt");
             weatherController.MapEnpointApiOrJwtAuth("api-key-or-jwt");
@@ -22,9 +23,14 @@ namespace JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions
 
         private static void MapEndpointNoAuth(this RouteGroupBuilder grp, string endpointName)
             => grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
-                .AllowAnonymous()
                 .WithName($"GetWeatherForecast-{endpointName}")
                 .WithOpenApi();
+
+        private static void MapEndpointAnonymousAuth(this RouteGroupBuilder grp, string endpointName)
+           => grp.MapGet($"/{endpointName.ToLower()}", GetForecast())
+               .AllowAnonymous()
+               .WithName($"GetWeatherForecast-{endpointName}")
+               .WithOpenApi();
 
         private static void MapEndpointApiAuth(this RouteGroupBuilder grp, string endpointName)
             => MapDefaultGetEndpoint(grp, endpointName, AuthConstants.API_ONLY);

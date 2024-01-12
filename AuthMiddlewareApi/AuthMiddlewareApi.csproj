@@ -5,8 +5,8 @@
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-		<RootNamespace>JinnStudios.Howard.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
-		<AssemblyName>JinnStudios.Howard.$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
+		<RootNamespace>JinnHoward.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+		<AssemblyName>JinnHoward.$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
 	</PropertyGroup>
 
 	<ItemGroup>

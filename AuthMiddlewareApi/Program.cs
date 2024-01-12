@@ -1,16 +1,16 @@
-using JinnStudios.Howard.AuthMiddlewareApi.Authentication;
-using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
-using JinnStudios.Howard.AuthMiddlewareApi.Authorization.ApiKey;
-using JinnStudios.Howard.AuthMiddlewareApi.Authorization.ApiKeyOrJwt;
-using JinnStudios.Howard.AuthMiddlewareApi.Authorization.Jwt;
-using JinnStudios.Howard.AuthMiddlewareApi.ControllerExtentions;
-using JinnStudios.Howard.AuthMiddlewareApi.Models;
+using JinnHoward.AuthMiddlewareApi.Authentication;
+using JinnHoward.AuthMiddlewareApi.Authentication.Extentions;
+using JinnHoward.AuthMiddlewareApi.Authorization.ApiKey;
+using JinnHoward.AuthMiddlewareApi.Authorization.ApiKeyOrJwt;
+using JinnHoward.AuthMiddlewareApi.Authorization.Jwt;
+using JinnHoward.AuthMiddlewareApi.ControllerExtentions;
+using JinnHoward.AuthMiddlewareApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Logging;
 using System.Reflection;
 
-namespace JinnStudios.Howard.AuthMiddlewareApi
+namespace JinnHoward.AuthMiddlewareApi
 {
     public static class Program
     {
@@ -24,7 +24,7 @@ namespace JinnStudios.Howard.AuthMiddlewareApi
             WebApplication.CreateBuilder(args)
                 .SetupConfiguration()
                 .ComposeDependencies()
-                .BuildApp()
+                .BuildAppWithServices()
                 .ConfigureApp()
                 .Run();
         }
@@ -48,10 +48,11 @@ namespace JinnStudios.Howard.AuthMiddlewareApi
             builder.Services.AddSingleton<IAuthorizationHandler, OrJwtRequirementHandler>();
             builder.Services.AddSingleton<IAuthorizationHandler, JwtRequirementHandler>();
             builder.Services.AddSingleton<IAuthorizationHandler, ApiKeyRequirementHandler>();
+            builder.Services.AddSingleton<IApiKeyValidator, ApiKeyValidator>();
             return builder;
         }
 
-        public static WebApplication BuildApp(this WebApplicationBuilder builder)
+        public static WebApplication BuildAppWithServices(this WebApplicationBuilder builder)
         {
             builder.Services.AddServices();
             return builder.Build();
@@ -59,7 +60,7 @@ namespace JinnStudios.Howard.AuthMiddlewareApi
 
         public static void AddServices(this IServiceCollection services)
         {
-            services.AddAuthentication();
+            //services.AddAuthentication();
             services.AddAuthorization(options =>
             {
                 options.AddPolicy(AuthConstants.API_OR_JWT, (policy) => policy.AddRequirements(new ApiKeyOrJwtAccessRequirement()));
@@ -72,14 +73,6 @@ namespace JinnStudios.Howard.AuthMiddlewareApi
             services.AddSwaggerGen();
         }
 
-        private static Action<JwtBearerOptions> GetDefaultJwtOptions()
-        {
-            return jwtOptions =>
-            {
-                jwtOptions.TokenValidationParameters = JwtExt.GetValidationParameters(ApiSecret, EncryptionKey);
-            };
-        }
-
         private static WebApplication ConfigureApp(this WebApplication app)
         {
             if (app.Environment.IsDevelopment())
@@ -89,7 +82,7 @@ namespace JinnStudios.Howard.AuthMiddlewareApi
             }
 
             app.UseHttpsRedirection();
-            app.UseMiddleware<ApiKeyOrJwtMiddleware>(ApiSecret, EncryptionKey);  //Register as first middleware to avoid other middleware execution before api key check
+            app.UseMiddleware<ApiKeyOrJwtMiddleware>(ApiSecret, EncryptionKey, app.Services.GetService<IApiKeyValidator>());  //Register as first middleware to avoid other middleware execution before api key check
             app.UseAuthorization();
 
             app.MapAuthApiController(ApiSecret);
