@@ -1,10 +1,10 @@
-﻿using JinnStudios.Howard.AuthMiddlewareApi.Models;
+﻿using JinnHoward.AuthMiddlewareApi.Models;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions
+namespace JinnHoward.AuthMiddlewareApi.Authentication.Extentions
 {
     public static class JwtExt
     {

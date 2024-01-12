@@ -1,10 +1,10 @@
-﻿using JinnStudios.Howard.AuthMiddlewareApi.Authentication.Extentions;
-using JinnStudios.Howard.AuthMiddlewareApi.Models;
+﻿using JinnHoward.AuthMiddlewareApi.Authentication.Extentions;
+using JinnHoward.AuthMiddlewareApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Net.Mime;
 
-namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication
+namespace JinnHoward.AuthMiddlewareApi.Authentication
 {
     public class ApiKeyOrJwtMiddleware
     {
@@ -12,26 +12,28 @@ namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication
         private readonly ILogger<ApiKeyOrJwtMiddleware> _logger;
         private readonly string _apiSecret;
         private readonly string _encryptionKey;
+        private readonly IApiKeyValidator _apiKeyValidator;
 
-        public ApiKeyOrJwtMiddleware(RequestDelegate next, ILogger<ApiKeyOrJwtMiddleware> logger, string apiSecret, string encryptionKey)
+        public ApiKeyOrJwtMiddleware(RequestDelegate next, ILogger<ApiKeyOrJwtMiddleware> logger, string apiSecret, string encryptionKey, IApiKeyValidator apiKeyValidator)
         {
             _next = next;
             _logger = logger;
             _apiSecret = apiSecret;
             _encryptionKey = encryptionKey;
+            _apiKeyValidator = apiKeyValidator;
         }
 
         public async Task Invoke(HttpContext httpContext)
         {
             try
             {
-                if (IsHttpContextValid(httpContext) == false || IsAllowAnonymousEndpoint(httpContext))
+                if (IsHttpContextValid(httpContext) == false || IsAllowAnonymousEndpoint(httpContext) || HasAuthorizeAttribute(httpContext) == false)
                 {
                     await _next(httpContext);
                     return;
                 }
 
-                var authAttr = httpContext.GetEndpoint()?.Metadata?.GetMetadata<AuthorizeAttribute>()?.Policy ?? string.Empty;
+                var authAttr = GetAuthAttributePolicy(httpContext);
                 var isValidToProceed = false;
                 var apiKey = string.Empty;
                 var authTokenValidator = new TokenValidationResult();
@@ -68,6 +70,8 @@ namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication
                         isValidToProceed = isApiKeyValid && isJwtValid;
                         break;
                     default:
+                        _logger.LogWarning("Authentication Policy not found: {authAttr}", authAttr);
+                        await _next(httpContext);
                         break;
                 }
 
@@ -98,7 +102,7 @@ namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication
             }
             if (isRequired)
             {
-                var isValid = await ApiKeyExt.ValidateApiKey(apiKey);
+                var isValid = await _apiKeyValidator.ValidateApiKey(apiKey);
                 if (isValid == false)
                     _logger.LogError("ApiKey is not valid: {ApiKey}", apiKey);
                 return isValid;
@@ -134,6 +138,12 @@ namespace JinnStudios.Howard.AuthMiddlewareApi.Authentication
 
             return true;
         }
+
+        private bool HasAuthorizeAttribute(HttpContext httpContext)
+            => GetAuthAttributePolicy(httpContext).IsNullOrWhiteSpace() == false;
+
+        private static string GetAuthAttributePolicy(HttpContext httpContext)
+                => httpContext.GetEndpoint()?.Metadata?.GetMetadata<AuthorizeAttribute>()?.Policy ?? string.Empty;
 
         private bool IsAllowAnonymousEndpoint(HttpContext httpContext)
         {

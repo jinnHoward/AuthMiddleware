@@ -1,4 +1,4 @@
-﻿namespace JinnStudios.Howard.AuthMiddlewareApi.Models
+﻿namespace JinnHoward.AuthMiddlewareApi.Models
 {
     public record UserInfo
     {

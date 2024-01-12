@@ -1,7 +1,7 @@
-﻿using JinnStudios.Howard.AuthMiddlewareApi.Authorization.ApiKey;
+﻿using JinnHoward.AuthMiddlewareApi.Authorization.ApiKey;
 using Microsoft.AspNetCore.Authorization;
 
-namespace JinnStudios.Howard.AuthMiddlewareApi.Authorization.ApiKeyOrJwt
+namespace JinnHoward.AuthMiddlewareApi.Authorization.ApiKeyOrJwt
 {
     public class OrApiKeyRequirementHandler : AuthorizationHandler<ApiKeyOrJwtAccessRequirement>
     {

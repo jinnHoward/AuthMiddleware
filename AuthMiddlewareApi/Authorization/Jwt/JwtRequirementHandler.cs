@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
-namespace JinnStudios.Howard.AuthMiddlewareApi.Authorization.Jwt
+namespace JinnHoward.AuthMiddlewareApi.Authorization.Jwt
 {
     public class JwtRequirementHandler : AuthorizationHandler<JwtRequirement>
     {
